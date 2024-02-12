@@ -221,9 +221,8 @@ class OBJECTS_API CREATURE :public PROTON
 			float edge_ey = scr_height, int _gear = 1) = 0;
 };
 
-typedef CELL(&GRID)[10][10];
 typedef PROTON* prot_ptr;
 typedef CREATURE* cre_ptr;
 
-extern OBJECTS_API void InitGrid(float _firstx, float _firsty, GRID _NewGrid);
+extern OBJECTS_API void InitGrid(float _firstx, float _firsty, CELL (&_NewGrid)[10][10]);
 extern OBJECTS_API cre_ptr CreatureFactory(creatures _type, float _x, float _y);
