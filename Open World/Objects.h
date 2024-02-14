@@ -7,7 +7,7 @@
 #endif
 
 #define scr_width 516.0f    //SCREEN 500 x 750 - cell 50 x 50
-#define scr_height 786.0f
+#define scr_height 686.0f
 
 #define DL_OK 5001
 #define DL_FAIL 5002

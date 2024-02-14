@@ -78,7 +78,7 @@ int speed = 1;
 int minutes = 0;
 int seconds = 0;
 
-CELL Grid[10][10];
+CELL Grid[10][10] = { 0 };
 
 ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
@@ -134,8 +134,8 @@ void InitGame()
     minutes = 0;
     seconds = 0;
 
+    InitGrid(1.0f, 51.0f, Grid);
 
-    InitGrid(0, 50.0f, Grid);
 }
 void ReleaseResources()
 {
@@ -451,7 +451,7 @@ void SystemInit()
     if (!RegisterClass(&bWin))ErrExit(eClass);
 
     bHwnd = CreateWindowW(bWinClassName, L"Световни приключения", WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, window_x, window_y,
-        static_cast<int>(scr_width), static_cast<int>(scr_height), NULL, NULL, bIns, NULL);
+        (int)(scr_width), (int)(scr_height), NULL, NULL, bIns, NULL);
     if (!bHwnd)ErrExit(eWindow);
     else ShowWindow(bHwnd, SW_SHOWDEFAULT);
 
@@ -476,7 +476,7 @@ void SystemInit()
     }
 
     gStop[0].position = 0;
-    gStop[0].color = D2D1::ColorF(D2D1::ColorF::DarkBlue);
+    gStop[0].color = D2D1::ColorF(D2D1::ColorF::LightGreen);
     gStop[1].position = 1.0f;
     gStop[1].color = D2D1::ColorF(D2D1::ColorF::AliceBlue);
 
@@ -487,8 +487,9 @@ void SystemInit()
         ErrExit(eD2D);
     }
 
-    hr = Draw->CreateRadialGradientBrush(D2D1::RadialGradientBrushProperties(D2D1::Point2F(scr_width / 2, 25.0f),
-        D2D1::Point2F(0, 0), scr_width / 2, 25.0f), gsCol, &ButBckgBrush);
+    if (gsCol)
+        hr = Draw->CreateRadialGradientBrush(D2D1::RadialGradientBrushProperties(D2D1::Point2F(scr_width / 2, 25.0f),
+            D2D1::Point2F(0, 0), scr_width / 2, 25.0f), gsCol, &ButBckgBrush);
     if (hr != S_OK)
     {
         LogError(L"Error creating GradientBrush for button background ");
@@ -516,7 +517,7 @@ void SystemInit()
         ErrExit(eD2D);
     }
 
-    hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DarkGray), &FieldBrush);
+    hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &FieldBrush);
     if (hr != S_OK)
     {
         LogError(L"Error creating ButFieldBrush ");
@@ -531,7 +532,7 @@ void SystemInit()
     }
 
     hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_OBLIQUE,
-        DWRITE_FONT_STRETCH_NORMAL, 20.0f, L"", &nrmText);
+        DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
     if (hr != S_OK)
     {
         LogError(L"Error creating nrmText ");
@@ -539,7 +540,7 @@ void SystemInit()
     }
 
     hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_OBLIQUE,
-        DWRITE_FONT_STRETCH_NORMAL, 64.0f, L"", &bigText);
+        DWRITE_FONT_STRETCH_NORMAL, 48.0f, L"", &bigText);
     if (hr != S_OK)
     {
         LogError(L"Error creating bigText ");
@@ -702,10 +703,10 @@ void SystemInit()
         show[i] = first_text[i];
         Draw->BeginDraw();
         Draw->Clear(D2D1::ColorF(D2D1::ColorF::Azure));
-        if (TxtBrush && nrmText)
-            Draw->DrawText(show, i, nrmText, D2D1::RectF(50.0f, cl_height / 2 - 50.0f, cl_width, cl_height), TxtBrush);
+        if (TxtBrush && bigText)
+            Draw->DrawText(show, i, bigText, D2D1::RectF(30.0f, cl_height / 2 - 50.0f, cl_width, cl_height), TxtBrush);
         Draw->EndDraw();
-        Sleep(30);
+        Sleep(20);
     }
     Sleep(2500);
 }
@@ -744,14 +745,80 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         // DRAW THINGS *******************************
         Draw->BeginDraw();
-        
-        
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::Azure));
 
+        if (FieldBrush)
+            Draw->FillRectangle(D2D1::RectF(0, 0, cl_width, 50.0f), ButBckgBrush);
+        if (nrmText && TxtBrush && ButHgltBrush && ButInactBrush)
+        {
+            if (name_set)
+                Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                    ButInactBrush);
+            else
+            {
+                if (b1Hglt)
+                    Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                        ButHgltBrush);
+                else
+                    Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                        TxtBrush);
+            }
 
+            if (b2Hglt)
+                Draw->DrawText(L"ЗВУЦИ ON / OFF", 15, nrmText, D2D1::RectF(b2Rect.left + 5.0f, 0, b2Rect.right, 50.0f),
+                    ButHgltBrush);
+            else
+                Draw->DrawText(L"ЗВУЦИ ON / OFF", 15, nrmText, D2D1::RectF(b2Rect.left + 5.0f, 0, b2Rect.right, 50.0f),
+                    TxtBrush);
+
+            if (b3Hglt)
+                Draw->DrawText(L"ПОМОЩ", 6, nrmText, D2D1::RectF(b3Rect.left + 10.0f, 0, b3Rect.right, 50.0f),
+                    ButHgltBrush);
+            else
+                Draw->DrawText(L"ПОМОЩ", 6, nrmText, D2D1::RectF(b3Rect.left + 10.0f, 0, b3Rect.right, 50.0f),
+                    TxtBrush);
+        }
+
+        for (int rows = 0; rows < 10; rows++)
+        {
+            for (int cols = 0; cols < 10; cols++)
+            {
+                switch (Grid[cols][rows].type)
+                {
+                case grids::not_used:
+                    if (FieldBrush)
+                        Draw->FillRectangle(D2D1::RectF(Grid[cols][rows].x, Grid[cols][rows].y,
+                            Grid[cols][rows].ex, Grid[cols][rows].ey), FieldBrush);
+                    break;
+
+                case grids::empty:
+                    Draw->DrawBitmap(bmpTile, D2D1::RectF(Grid[cols][rows].x, Grid[cols][rows].y,
+                        Grid[cols][rows].ex, Grid[cols][rows].ey));
+                    break;
+
+                case grids::rock:
+                    Draw->DrawBitmap(bmpRockTile, D2D1::RectF(Grid[cols][rows].x, Grid[cols][rows].y,
+                        Grid[cols][rows].ex, Grid[cols][rows].ey));
+                    break;
+
+                case grids::tree:
+                    Draw->DrawBitmap(bmpTreeTile, D2D1::RectF(Grid[cols][rows].x, Grid[cols][rows].y,
+                        Grid[cols][rows].ex, Grid[cols][rows].ey));
+                    break;
+
+                case grids::end_tile:
+                    Draw->DrawBitmap(bmpEndTile, D2D1::RectF(Grid[cols][rows].x, Grid[cols][rows].y,
+                        Grid[cols][rows].ex, Grid[cols][rows].ey));
+                    break;
+                }
+            }
+        }
+        ///////////////////////////////////////////////////////////////////
 
 
         Draw->EndDraw();
 
+       
     }
 
     std::remove(tmp_file);
