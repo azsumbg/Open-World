@@ -80,6 +80,9 @@ int seconds = 0;
 
 CELL Grid[10][10] = { 0 };
 
+cre_ptr Hero = nullptr;
+dirs hero_prev_dir = dirs::stop;
+
 ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
 
@@ -134,7 +137,55 @@ void InitGame()
     minutes = 0;
     seconds = 0;
 
+    ReleaseCOM(&Hero);
+
     InitGrid(1.0f, 51.0f, Grid);
+
+    for (int j = 0; j < 10; j++)
+    {
+        bool found_first_col = false;
+
+        int start_col = -1;
+        int max_num_cols = 0;
+
+        for (int i = 0; i < 10; i++)
+        {
+            start_col = -1;
+            found_first_col = false;
+
+            while (!found_first_col)
+            {
+                start_col++;
+                if (start_col > 7)start_col = 0;
+                if (rand() % 3 == 1)found_first_col = true;
+            }
+
+            max_num_cols = 9 - start_col;
+        }
+
+        for (int i = start_col; i < max_num_cols; ++i)
+        {
+            switch (rand() % 10)
+            {
+            case 0:
+                Grid[i][j].type = grids::rock;
+                break;
+
+            case 5:
+                Grid[i][j].type = grids::tree;
+                break;
+                
+            default:
+                Grid[i][j].type = grids::empty;
+            }
+        }
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
+    }
+
 
 }
 void ReleaseResources()
@@ -404,6 +455,90 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         }
         break;
 
+    case WM_KEYDOWN:
+        switch (wParam)
+        {
+        case VK_UP:
+            if (Hero)
+            {
+                int up_cell = Hero->GetCellNum() - 10;
+                int up_cell_col = up_cell % 10;
+                int up_cell_row = up_cell / 10;
+                
+                if (up_cell < 0)break;
+
+                hero_prev_dir = Hero->dir;
+                Hero->dir = dirs::up;
+                if (Grid[up_cell_col][up_cell_row].type == grids::empty)
+                {
+                    Hero->x = Grid[up_cell_col][up_cell_row].x + 10.0f;
+                    Hero->y = Grid[up_cell_col][up_cell_row].y + 10.0f;
+                    Hero->SetEdges();
+                }
+            }
+            break;
+
+        case VK_DOWN:
+            if (Hero)
+            {
+                int down_cell = Hero->GetCellNum() + 10;
+                int down_cell_col = down_cell % 10;
+                int down_cell_row = down_cell / 10;
+
+                if (down_cell > 99)break;
+
+                hero_prev_dir = Hero->dir;
+                Hero->dir = dirs::down;
+                if (Grid[down_cell_col][down_cell_row].type == grids::empty)
+                {
+                    Hero->x = Grid[down_cell_col][down_cell_row].x + 10.0f;
+                    Hero->y = Grid[down_cell_col][down_cell_row].y + 10.0f;
+                    Hero->SetEdges();
+                }
+            }
+            break;
+
+        case VK_LEFT:
+            if (Hero)
+            {
+                int left_cell = Hero->GetCellNum() - 1;
+                int left_cell_col = left_cell % 10;
+                int left_cell_row = left_cell / 10;
+
+                if (left_cell < 0)break;
+
+                Hero->dir = dirs::left;
+                if (Grid[left_cell_col][left_cell_row].type == grids::empty)
+                {
+                    Hero->x = Grid[left_cell_col][left_cell_row].x + 10.0f;
+                    Hero->y = Grid[left_cell_col][left_cell_row].y + 10.0f;
+                    Hero->SetEdges();
+                }
+            }
+            break;
+
+        case VK_RIGHT:
+            if (Hero)
+            {
+                int right_cell = Hero->GetCellNum() + 1;
+                int right_cell_col = right_cell % 10;
+                int right_cell_row = right_cell / 10;
+
+                if (right_cell > 99)break;
+
+                Hero->dir = dirs::right;
+                if (Grid[right_cell_col][right_cell_row].type == grids::empty)
+                {
+                    Hero->x = Grid[right_cell_col][right_cell_row].x + 10.0f;
+                    Hero->y = Grid[right_cell_col][right_cell_row].y + 10.0f;
+                    Hero->SetEdges();
+                }
+            }
+            break;
+
+
+        }
+        break;
 
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
     }
@@ -733,7 +868,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             Draw->BeginDraw();
             Draw->Clear(D2D1::ColorF(D2D1::ColorF::Azure));
             if (TxtBrush && bigText)
-                Draw->DrawText(L"ПАУЗА", 6, bigText, D2D1::RectF(100.0f, cl_height / 2 - 50.0f, cl_width, cl_height), TxtBrush);
+                Draw->DrawText(L"ПАУЗА", 6, bigText, D2D1::RectF(200.0f, cl_height / 2 - 50.0f, cl_width, cl_height), TxtBrush);
             Draw->EndDraw();
             continue;
         }
@@ -815,7 +950,62 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         ///////////////////////////////////////////////////////////////////
 
+        // HERO *****************************
 
+        if (Hero)
+        {
+            switch (Hero->dir)
+            {
+                case dirs::left:
+                    Draw->DrawBitmap(bmpHeroL[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                    break;
+
+                case dirs::stop:
+                    Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                    break;
+
+                case dirs::right:
+                    Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                    break;
+
+                case dirs::up:
+                    if (hero_prev_dir == dirs::left)
+                    {
+                        Draw->DrawBitmap(bmpHeroL[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                        break;
+                    }
+                    else
+                    {
+                        Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                        break;
+                    }
+                    break;
+
+                case dirs::down:
+                    if (hero_prev_dir == dirs::left)
+                    {
+                        Draw->DrawBitmap(bmpHeroL[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                        break;
+                    }
+                    else
+                    {
+                        Draw->DrawBitmap(bmpHeroR[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                        break;
+                    }
+                    break;
+            }
+        }
+
+
+        /////////////////////////////////////
+
+
+
+
+
+
+
+        ////////////////////////////////////////////////
         Draw->EndDraw();
 
        
