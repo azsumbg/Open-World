@@ -141,46 +141,42 @@ void InitGame()
 
     InitGrid(1.0f, 51.0f, Grid);
 
+    
     for (int j = 0; j < 10; j++)
     {
         bool found_first_col = false;
-
         int start_col = -1;
         int max_num_cols = 0;
 
-        for (int i = 0; i < 10; i++)
+        while (!found_first_col)
         {
-            start_col = -1;
-            found_first_col = false;
-
-            while (!found_first_col)
-            {
-                start_col++;
-                if (start_col > 7)start_col = 0;
-                if (rand() % 3 == 1)found_first_col = true;
-            }
-
-            max_num_cols = 9 - start_col;
+            start_col++;
+            if (start_col > 7)start_col = 0;
+            if (rand() % 3 == 1)found_first_col = true;
         }
 
-        for (int i = start_col; i < max_num_cols; ++i)
+        max_num_cols = 9 - start_col;
+        max_num_cols += start_col;
+
+        for (int i = start_col; i <= max_num_cols; i++)
         {
-            switch (rand() % 10)
+            switch (rand() % 5)
             {
             case 0:
                 Grid[i][j].type = grids::rock;
                 break;
 
-            case 5:
+            case 3:
                 Grid[i][j].type = grids::tree;
                 break;
-                
+
             default:
                 Grid[i][j].type = grids::empty;
             }
         }
     }
 
+    
     for (int i = 0; i < 10; i++)
     {
         if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
