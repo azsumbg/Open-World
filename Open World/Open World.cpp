@@ -156,7 +156,8 @@ void InitGame()
         }
 
         max_num_cols = 9 - start_col;
-        max_num_cols += start_col;
+        max_num_cols += start_col - rand()% 2;
+        if (max_num_cols <= start_col)max_num_cols = start_col + 1;
 
         for (int i = start_col; i <= max_num_cols; i++)
         {
@@ -176,13 +177,10 @@ void InitGame()
         }
     }
 
-    
     for (int i = 0; i < 10; i++)
     {
         if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
     }
-
-
 }
 void ReleaseResources()
 {
@@ -223,6 +221,51 @@ void ErrExit(int which)
     ReleaseResources();
     exit(1);
 }
+void NewLevel()
+{
+    ReleaseCOM(&Hero);
+
+    for (int j = 0; j < 10; j++)
+    {
+        bool found_first_col = false;
+        int start_col = -1;
+        int max_num_cols = 0;
+
+        while (!found_first_col)
+        {
+            start_col++;
+            if (start_col > 7)start_col = 0;
+            if (rand() % 3 == 1)found_first_col = true;
+        }
+
+        max_num_cols = 9 - start_col;
+        max_num_cols += start_col - rand() % 2;
+        if (max_num_cols <= start_col)max_num_cols = start_col + 1;
+
+        for (int i = start_col; i <= max_num_cols; i++)
+        {
+            switch (rand() % 5)
+            {
+            case 0:
+                Grid[i][j].type = grids::rock;
+                break;
+
+            case 3:
+                Grid[i][j].type = grids::tree;
+                break;
+
+            default:
+                Grid[i][j].type = grids::empty;
+            }
+        }
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
+    }
+}
+
 
 void GameOver()
 {
