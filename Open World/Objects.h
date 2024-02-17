@@ -89,6 +89,7 @@ class OBJECTS_API CREATURE :public PROTON
 		int strenght = 0;
 		bool horizontal_move = true;
 		bool killed = false;
+		bool in_battle = false;
 
 		CREATURE(float _x, float _y, float _width, float _height, creatures _type) :PROTON(_x, _y, _width, _height)
 		{
@@ -218,7 +219,7 @@ class OBJECTS_API CREATURE :public PROTON
 		virtual void Release() = 0;
 		virtual int GetFrame() = 0;
 		virtual BOOL Move(float edge_x = 0, float edge_y = 50.0f, float edge_ex = scr_width, 
-			float edge_ey = scr_height, int _gear = 1) = 0;
+			float edge_ey = 550.0f, int _gear = 1) = 0;
 };
 
 typedef PROTON* prot_ptr;

@@ -83,6 +83,8 @@ CELL Grid[10][10] = { 0 };
 cre_ptr Hero = nullptr;
 dirs hero_prev_dir = dirs::stop;
 
+std::vector<cre_ptr> vBadArmy;
+
 ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
 
@@ -138,10 +140,12 @@ void InitGame()
     seconds = 0;
 
     ReleaseCOM(&Hero);
+    if (!vBadArmy.empty())
+        for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
+    vBadArmy.clear();
 
     InitGrid(1.0f, 51.0f, Grid);
 
-    
     for (int j = 0; j < 10; j++)
     {
         bool found_first_col = false;
@@ -161,7 +165,7 @@ void InitGame()
 
         for (int i = start_col; i <= max_num_cols; i++)
         {
-            switch (rand() % 5)
+            switch (rand() % 10)
             {
             case 0:
                 Grid[i][j].type = grids::rock;
@@ -190,6 +194,7 @@ void InitGame()
             break;
         }
     }
+    
 }
 void ReleaseResources()
 {
@@ -233,6 +238,9 @@ void ErrExit(int which)
 void NewLevel()
 {
     ReleaseCOM(&Hero);
+    if (!vBadArmy.empty())
+        for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
+    vBadArmy.clear();
 
     InitGrid(1.0f, 51.0f, Grid);
 
@@ -255,7 +263,7 @@ void NewLevel()
 
         for (int i = start_col; i <= max_num_cols; i++)
         {
-            switch (rand() % 5)
+            switch (rand() % 10)
             {
             case 0:
                 Grid[i][j].type = grids::rock;
@@ -964,6 +972,142 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         /////////////////////////////////////////////////////////////////
 
+        //GAME ENGINE *****************************
+
+        //BAD ARMY ********************************
+
+        if (vBadArmy.size() < 5)
+        {
+            if (rand() % 50 == 6)
+            {
+                switch (rand() % 4)
+                {
+                case 0:
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (Grid[i][0].type == grids::empty)
+                        {
+                            vBadArmy.push_back(CreatureFactory(creatures::fly, Grid[i][0].x, Grid[i][0].y));
+                            vBadArmy.back()->dir = dirs::down;
+                            break;
+                        }
+                    }
+                    break;
+
+                case 1:
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (Grid[i][0].type == grids::empty)
+                        {
+                            vBadArmy.push_back(CreatureFactory(creatures::fly, Grid[i][9].x, Grid[i][9].y));
+                            vBadArmy.back()->dir = dirs::up;
+                            break;
+                        }
+                    }
+                    break;
+
+                case 2:
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (Grid[0][i].type == grids::empty)
+                        {
+                            if (rand() % 3 == 1)
+                                vBadArmy.push_back(CreatureFactory(creatures::walk, Grid[0][i].x, Grid[0][i].y));
+                            else
+                                vBadArmy.push_back(CreatureFactory(creatures::creep, Grid[0][i].x, Grid[0][i].y));
+                            vBadArmy.back()->dir = dirs::right;
+                            break;
+                        }
+                    }
+                    break;
+
+                case 3:
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (Grid[9][i].type == grids::empty)
+                        {
+                            if (rand() % 3 == 1)
+                                vBadArmy.push_back(CreatureFactory(creatures::walk, Grid[9][i].x, Grid[9][i].y));
+                            else
+                                vBadArmy.push_back(CreatureFactory(creatures::creep, Grid[9][i].x, Grid[9][i].y));
+                            vBadArmy.back()->dir = dirs::left;
+                            break;
+                        }
+                    }
+                    break;
+
+
+
+                }
+            }
+        }
+
+        if (!vBadArmy.empty())
+        {
+            for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); ++bad)
+            {
+                switch ((*bad)->dir)
+                {
+                case dirs::down:
+                    if ((*bad)->Move() == DL_FAIL)(*bad)->dir = dirs::up;
+                    break;
+
+                case dirs::up:
+                    if ((*bad)->Move() == DL_FAIL)(*bad)->dir = dirs::down;
+                    break;
+
+                case dirs::left:
+                    if ((*bad)->Move() == DL_FAIL)(*bad)->dir = dirs::right;
+                    break;
+
+                case dirs::right:
+                    if ((*bad)->Move() == DL_FAIL)(*bad)->dir = dirs::left;
+                    break;
+
+                }
+            }
+        }
+
+        if (!vBadArmy.empty())
+        {
+            for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); bad++)
+            {
+                int my_col = (*bad)->GetCellNum() % 10;
+                int my_row = (*bad)->GetCellNum() / 10;
+
+                switch ((*bad)->dir)
+                {
+                case dirs::down:
+                    if (my_row < 9)
+                    {
+                        if (Grid[my_col][my_row + 1].type != grids::empty)(*bad)->dir = dirs::up;
+                    }
+                    break;
+
+                case dirs::up:
+                    if (my_row > 0)
+                    {
+                        if (Grid[my_col][my_row - 1].type != grids::empty)(*bad)->dir = dirs::down;
+                    }
+                    break;
+
+                case dirs::right:
+                    if (my_col < 9)
+                    {
+                        if (Grid[my_col + 1][my_row].type != grids::empty)(*bad)->dir = dirs::left;
+                    }
+                    break;
+
+                case dirs::left:
+                    if (my_col > 0)
+                    {
+                        if (Grid[my_col - 1][my_row].type != grids::empty)(*bad)->dir = dirs::right;
+                    }
+                    break;
+                }
+            }
+        }
+
 
 
 
@@ -1089,9 +1233,38 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         /////////////////////////////////////
 
+        //BAD ARMY *************************
+
+        if (!vBadArmy.empty())
+        {
+            for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); ++bad)
+            {
+                switch ((*bad)->GetType())
+                {
+                case creatures::creep:
+                    if ((*bad)->dir == dirs::left)
+                        Draw->DrawBitmap(bmpCreepL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    else
+                        Draw->DrawBitmap(bmpCreepR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    break;
+
+                case creatures::walk:
+                    if ((*bad)->dir == dirs::left)
+                        Draw->DrawBitmap(bmpWalkL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    else
+                        Draw->DrawBitmap(bmpWalkR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    break;
+
+                case creatures::fly:
+                    Draw->DrawBitmap(bmpFly[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    break;
 
 
+                }
+            }
+        }
 
+        
 
 
 
