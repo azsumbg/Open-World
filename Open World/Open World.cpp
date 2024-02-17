@@ -69,6 +69,8 @@ bool b1Hglt = false;
 bool b2Hglt = false;
 bool b3Hglt = false;
 
+bool win_game = false;
+
 wchar_t current_player[16] = L"ONE WARRIOR";
 
 float cl_width = 0;
@@ -86,7 +88,7 @@ dirs hero_prev_dir = dirs::stop;
 std::vector<cre_ptr> vBadArmy;
 
 prot_ptr Potion = nullptr;
-
+prot_ptr Castle = nullptr;
 
 ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
@@ -107,6 +109,7 @@ ID2D1Bitmap* bmpTreeTile = nullptr;
 ID2D1Bitmap* bmpEndTile = nullptr;
 ID2D1Bitmap* bmpKill = nullptr;
 ID2D1Bitmap* bmpHeal = nullptr;
+ID2D1Bitmap* bmpCastle = nullptr;
 
 ID2D1Bitmap* bmpFly[28] = { nullptr };
 ID2D1Bitmap* bmpWalkL[12] = { nullptr };
@@ -144,9 +147,13 @@ void InitGame()
     seconds = 120;
 
     ReleaseCOM(&Hero);
+    ReleaseCOM(&Potion);
+    ReleaseCOM(&Castle);
+
     if (!vBadArmy.empty())
         for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
     vBadArmy.clear();
+    
 
     InitGrid(1.0f, 51.0f, Grid);
 
@@ -219,8 +226,8 @@ void ReleaseResources()
     if (ReleaseCOM(&bmpEndTile) == DL_FAIL)LogError(L"Error releasing bmpEndTile");
     if (ReleaseCOM(&bmpKill) == DL_FAIL)LogError(L"Error releasing bmpKill");
     if (ReleaseCOM(&bmpHeal) == DL_FAIL)LogError(L"Error releasing bmpHeal");
-    if (ReleaseCOM(&Potion) == DL_FAIL)LogError(L"Error releasing Potion");
-
+    if (ReleaseCOM(&bmpCastle) == DL_FAIL)LogError(L"Error releasing Castle");
+    
     for (int i = 0; i < 28; i++) if(ReleaseCOM(&bmpFly[i])==DL_FAIL)LogError(L"Error releasing bmpFly");
 
     for (int i = 0; i < 4; ++i)if (ReleaseCOM(&bmpCreepL[i]) == DL_FAIL)LogError(L"Error releasing bmpCreepL");
@@ -245,10 +252,14 @@ void NewLevel()
 {
     seconds = 120;
     ReleaseCOM(&Hero);
+    ReleaseCOM(&Potion);
+    ReleaseCOM(&Castle);
+
     if (!vBadArmy.empty())
         for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
     vBadArmy.clear();
 
+    
     InitGrid(1.0f, 51.0f, Grid);
 
     for (int j = 0; j < 10; j++)
@@ -298,6 +309,15 @@ void NewLevel()
             Grid[i][0].type = grids::end_tile;
             break;
         }
+    }
+
+    if (!Castle && rand() % 60 == 33)
+    {
+        int randx = rand() % 9;
+        int randy = rand() % 9;
+
+        Grid[randx][randy].type = grids::empty;
+        Castle = new PROTON(Grid[randx][randy].x, Grid[randx][randy].y, 49.0f, 49.0f);
     }
 }
 
@@ -834,6 +854,13 @@ void SystemInit()
         ErrExit(eD2D);
     }
 
+    bmpCastle = Load(L".\\res\\img\\castle.png", Draw);
+    if (!bmpCastle)
+    {
+        LogError(L"Error loading bmpCastle ");
+        ErrExit(eD2D);
+    }
+
     for (int i = 0; i < 22; i++)
     {
         wchar_t path[75] = L".\\res\\img\\hero_l\\";
@@ -1213,6 +1240,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (Hero && Castle)
+        {
+            if (!(Hero->x >= Castle->ex || Hero->ex <= Castle->x || Hero->y >= Castle->ey || Hero->ey <= Castle->y))
+            {
+                win_game = true;
+                GameOver();
+            }
+        }
+
+
         // DRAW THINGS *******************************
         Draw->BeginDraw();
         Draw->Clear(D2D1::ColorF(D2D1::ColorF::Azure));
@@ -1352,6 +1389,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         if (Potion)
             Draw->DrawBitmap(bmpHeal, D2D1::RectF(Potion->x, Potion->y, Potion->ex, Potion->ey));
+        if (Castle)
+            Draw->DrawBitmap(bmpCastle, D2D1::RectF(Castle->x, Castle->y, Castle->ex, Castle->ey));
 
         /////////////////////////////////////
 
@@ -1396,6 +1435,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+
 
         ////////////////////////////////////////////////
         Draw->EndDraw();
