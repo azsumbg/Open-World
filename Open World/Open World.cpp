@@ -181,6 +181,15 @@ void InitGame()
     {
         if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
     }
+
+    for (int i = 0; i < 10; i++)
+    {
+        if (Grid[i][0].type == grids::empty)
+        {
+            Grid[i][0].type = grids::end_tile;
+            break;
+        }
+    }
 }
 void ReleaseResources()
 {
@@ -225,6 +234,8 @@ void NewLevel()
 {
     ReleaseCOM(&Hero);
 
+    InitGrid(1.0f, 51.0f, Grid);
+
     for (int j = 0; j < 10; j++)
     {
         bool found_first_col = false;
@@ -264,8 +275,16 @@ void NewLevel()
     {
         if (Grid[i][9].type == grids::empty)Hero = CreatureFactory(creatures::hero, Grid[i][9].x + 10.0f, Grid[i][9].y + 10.0f);
     }
-}
 
+    for (int i = 0; i < 10; i++)
+    {
+        if (Grid[i][0].type == grids::empty)
+        {
+            Grid[i][0].type = grids::end_tile;
+            break;
+        }
+    }
+}
 
 void GameOver()
 {
@@ -514,6 +533,15 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     Hero->y = Grid[up_cell_col][up_cell_row].y + 10.0f;
                     Hero->SetEdges();
                 }
+                else
+                {
+                    if (Grid[up_cell_col][up_cell_row].type != grids::end_tile)
+                    {
+                        if (Hero->Attack() != 0)Grid[up_cell_col][up_cell_row].type = grids::empty;
+                    }
+                }
+
+                if (Grid[up_cell_col][up_cell_row].type == grids::end_tile)NewLevel();
             }
             break;
 
@@ -534,6 +562,14 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     Hero->y = Grid[down_cell_col][down_cell_row].y + 10.0f;
                     Hero->SetEdges();
                 }
+                else
+                {
+                    if (Grid[down_cell_col][down_cell_row].type != grids::end_tile)
+                    {
+                        if (Hero->Attack() != 0)Grid[down_cell_col][down_cell_row].type = grids::empty;
+                    }
+                }
+                if (Grid[down_cell_col][down_cell_row].type == grids::end_tile)NewLevel();
             }
             break;
 
@@ -553,6 +589,14 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     Hero->y = Grid[left_cell_col][left_cell_row].y + 10.0f;
                     Hero->SetEdges();
                 }
+                else
+                {
+                    if (Grid[left_cell_col][left_cell_row].type != grids::end_tile)
+                    {
+                        if (Hero->Attack() != 0)Grid[left_cell_col][left_cell_row].type = grids::empty;
+                    }
+                }
+                if (Grid[left_cell_col][left_cell_row].type == grids::end_tile)NewLevel();
             }
             break;
 
@@ -572,11 +616,18 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     Hero->y = Grid[right_cell_col][right_cell_row].y + 10.0f;
                     Hero->SetEdges();
                 }
+                else
+                {
+                    if (Grid[right_cell_col][right_cell_row].type != grids::end_tile)
+                    {
+                        if (Hero->Attack() != 0)Grid[right_cell_col][right_cell_row].type = grids::empty;
+                    }
+                }
+                if (Grid[right_cell_col][right_cell_row].type == grids::end_tile)NewLevel();
             }
             break;
-
-
         }
+        
         break;
 
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
