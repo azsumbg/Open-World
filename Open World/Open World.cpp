@@ -522,6 +522,10 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
         break;
 
     case WM_KEYDOWN:
+        if (Hero)
+        {
+            if (Hero->killed)break;
+        }
         switch (wParam)
         {
         case VK_UP:
@@ -1046,6 +1050,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); ++bad)
             {
+                if ((*bad)->killed)continue;
                 switch ((*bad)->dir)
                 {
                 case dirs::down:
@@ -1108,8 +1113,53 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vBadArmy.empty())
+        {
+            for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); ++bad)
+            {
+                if ((*bad)->dir == dirs::stop)
+                {
+                    if ((*bad)->horizontal_move)
+                    {
+                        if (rand() % 2 == 1)(*bad)->dir = dirs::right;
+                        else (*bad)->dir = dirs::left;
+                    }
+                    else
+                    {
+                        if (rand() % 2 == 1)(*bad)->dir = dirs::up;
+                        else (*bad)->dir = dirs::down;
+                    }
+                }
+            }
+        }
 
 
+        //ATACK *************************************
+
+        if (Hero && !vBadArmy.empty())
+        {
+            for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); bad++)
+            {
+                if ((*bad)->killed || Hero->killed)continue;
+
+                if (!(Hero->x >= (*bad)->ex || Hero->ex <= (*bad)->x || Hero->y >= (*bad)->ey || Hero->ey <= (*bad)->y))
+                {
+                    (*bad)->dir = dirs::stop;
+                    (*bad)->lifes -= Hero->Attack();
+                    Hero->lifes -= (*bad)->Attack();
+                    if ((*bad)->lifes <= 0)
+                    {
+                        score += 100;
+                        (*bad)->killed = true;
+                    }
+                    if (Hero->lifes <= 0)
+                    {
+                        Hero->killed = true;
+                        break;
+                    }
+                }
+            }
+        }
 
 
         // DRAW THINGS *******************************
@@ -1188,8 +1238,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         if (Hero)
         {
-            switch (Hero->dir)
+            if (!Hero->killed)
             {
+                switch (Hero->dir)
+                {
                 case dirs::left:
                     Draw->DrawBitmap(bmpHeroL[Hero->GetFrame()], D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
                     break;
@@ -1227,6 +1279,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                         break;
                     }
                     break;
+                }
+            }
+            else
+            {
+                Draw->DrawBitmap(bmpKill, D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                if (Hero->Killed() == DL_FAIL)GameOver();
             }
         }
 
@@ -1239,27 +1297,38 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             for (std::vector<cre_ptr>::iterator bad = vBadArmy.begin(); bad < vBadArmy.end(); ++bad)
             {
-                switch ((*bad)->GetType())
+                if (!(*bad)->killed)
                 {
-                case creatures::creep:
-                    if ((*bad)->dir == dirs::left)
-                        Draw->DrawBitmap(bmpCreepL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
-                    else
-                        Draw->DrawBitmap(bmpCreepR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
-                    break;
+                    switch ((*bad)->GetType())
+                    {
+                    case creatures::creep:
+                        if ((*bad)->dir == dirs::left)
+                            Draw->DrawBitmap(bmpCreepL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                        else
+                            Draw->DrawBitmap(bmpCreepR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                        break;
 
-                case creatures::walk:
-                    if ((*bad)->dir == dirs::left)
-                        Draw->DrawBitmap(bmpWalkL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
-                    else
-                        Draw->DrawBitmap(bmpWalkR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
-                    break;
+                    case creatures::walk:
+                        if ((*bad)->dir == dirs::left)
+                            Draw->DrawBitmap(bmpWalkL[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                        else
+                            Draw->DrawBitmap(bmpWalkR[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                        break;
 
-                case creatures::fly:
-                    Draw->DrawBitmap(bmpFly[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
-                    break;
-
-
+                    case creatures::fly:
+                        Draw->DrawBitmap(bmpFly[(*bad)->GetFrame()], D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                        break;
+                    }
+                }
+                else
+                {
+                    Draw->DrawBitmap(bmpKill, D2D1::RectF((*bad)->x, (*bad)->y, (*bad)->ex, (*bad)->ey));
+                    if ((*bad)->Killed() == DL_FAIL)
+                    {
+                        (*bad)->Release();
+                        vBadArmy.erase(bad);
+                        break;
+                    }
                 }
             }
         }
