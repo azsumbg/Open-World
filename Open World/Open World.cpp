@@ -85,6 +85,9 @@ dirs hero_prev_dir = dirs::stop;
 
 std::vector<cre_ptr> vBadArmy;
 
+prot_ptr Potion = nullptr;
+
+
 ID2D1Factory* iFactory = nullptr;
 ID2D1HwndRenderTarget* Draw = nullptr;
 
@@ -103,6 +106,7 @@ ID2D1Bitmap* bmpRockTile = nullptr;
 ID2D1Bitmap* bmpTreeTile = nullptr;
 ID2D1Bitmap* bmpEndTile = nullptr;
 ID2D1Bitmap* bmpKill = nullptr;
+ID2D1Bitmap* bmpHeal = nullptr;
 
 ID2D1Bitmap* bmpFly[28] = { nullptr };
 ID2D1Bitmap* bmpWalkL[12] = { nullptr };
@@ -137,7 +141,7 @@ void InitGame()
     speed = 1;
     score = 0;
     minutes = 0;
-    seconds = 0;
+    seconds = 120;
 
     ReleaseCOM(&Hero);
     if (!vBadArmy.empty())
@@ -214,6 +218,8 @@ void ReleaseResources()
     if (ReleaseCOM(&bmpTreeTile) == DL_FAIL)LogError(L"Error releasing bmpTreeTile");
     if (ReleaseCOM(&bmpEndTile) == DL_FAIL)LogError(L"Error releasing bmpEndTile");
     if (ReleaseCOM(&bmpKill) == DL_FAIL)LogError(L"Error releasing bmpKill");
+    if (ReleaseCOM(&bmpHeal) == DL_FAIL)LogError(L"Error releasing bmpHeal");
+    if (ReleaseCOM(&Potion) == DL_FAIL)LogError(L"Error releasing Potion");
 
     for (int i = 0; i < 28; i++) if(ReleaseCOM(&bmpFly[i])==DL_FAIL)LogError(L"Error releasing bmpFly");
 
@@ -237,6 +243,7 @@ void ErrExit(int which)
 }
 void NewLevel()
 {
+    seconds = 120;
     ReleaseCOM(&Hero);
     if (!vBadArmy.empty())
         for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
@@ -400,8 +407,9 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
 
     case WM_TIMER:
         if (pause)break;
-        seconds++;
+        seconds--;
         minutes = seconds / 60;
+        if (seconds == 0)GameOver();
         break;
 
     case WM_SETCURSOR:
@@ -819,6 +827,13 @@ void SystemInit()
         ErrExit(eD2D);
     }
 
+    bmpHeal = Load(L".\\res\\img\\life.png", Draw);
+    if (!bmpHeal)
+    {
+        LogError(L"Error loading bmpHeal ");
+        ErrExit(eD2D);
+    }
+
     for (int i = 0; i < 22; i++)
     {
         wchar_t path[75] = L".\\res\\img\\hero_l\\";
@@ -1146,7 +1161,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 {
                     (*bad)->dir = dirs::stop;
                     (*bad)->lifes -= Hero->Attack();
-                    Hero->lifes -= (*bad)->Attack();
+                    if (rand() % 100 == 66)Hero->lifes -= 50;
+                    else Hero->lifes -= (*bad)->Attack();
                     if ((*bad)->lifes <= 0)
                     {
                         score += 100;
@@ -1161,6 +1177,41 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!Potion && rand() % 400 == 33)
+        {
+            bool y_found = false;
+            bool x_found = false;
+
+            while (!y_found)
+            {
+                for (int row = 0; row < 10; row++)
+                {
+                    while (!x_found)
+                    {
+                        for (int col = 0; col < 10; col++)
+                        {
+                            if (Grid[col][row].type == grids::empty)
+                            {
+                                x_found = true;
+                                y_found = true;
+                                Potion = new PROTON(Grid[col][row].x + 15.0f, Grid[col][row].y + 15.0f, 20.0f, 17.0f);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (Hero && Potion)
+        {
+            if (!(Hero->x >= Potion->ex || Hero->ex <= Potion->x || Hero->y >= Potion->ey || Hero->ey <= Potion->y))
+            {
+                if (Hero->lifes + 30 >= 120)Hero->lifes += 30;
+                else Hero->lifes = 120;
+                ReleaseCOM(&Potion);
+            }
+        }
 
         // DRAW THINGS *******************************
         Draw->BeginDraw();
@@ -1286,8 +1337,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 Draw->DrawBitmap(bmpKill, D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
                 if (Hero->Killed() == DL_FAIL)GameOver();
             }
-        }
 
+            ID2D1SolidColorBrush* LifeBrush = nullptr;
+            if (Hero->lifes > 80)
+                Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &LifeBrush);
+            else if (Hero->lifes <= 80 && Hero->lifes > 40)
+                Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Yellow), &LifeBrush);
+            else
+                Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &LifeBrush);
+
+            Draw->DrawLine(D2D1::Point2F(Hero->x, Hero->y - 5.0f), D2D1::Point2F(Hero->x + Hero->lifes / 4, Hero->y - 5.0f), 
+                LifeBrush, 5.0f);
+            ReleaseCOM(&LifeBrush);
+        }
+        if (Potion)
+            Draw->DrawBitmap(bmpHeal, D2D1::RectF(Potion->x, Potion->y, Potion->ex, Potion->ey));
 
         /////////////////////////////////////
 
@@ -1332,10 +1396,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
-
-        
-
-
 
         ////////////////////////////////////////////////
         Draw->EndDraw();
