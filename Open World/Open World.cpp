@@ -320,15 +320,82 @@ void NewLevel()
         Castle = new PROTON(Grid[randx][randy].x, Grid[randx][randy].y, 49.0f, 49.0f);
     }
 }
+BOOL CheckRecord()
+{
+    if (score < 1)return no_record;
 
+    int result = 0;
+    CheckFile(record_file, &result);
+
+    if (result == FILE_NOT_EXIST)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << current_player[i] << std::endl;
+        rec.close();
+        return first_record;
+    }
+
+    std::wifstream check(record_file);
+    check >> result;
+    check.close();
+
+    if (result < score)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; i++)rec << current_player[i] << std::endl;
+        rec.close();
+        return record;
+    }
+
+    return no_record;
+}
 void GameOver()
 {
     PlaySound(NULL, NULL, NULL);
     KillTimer(bHwnd, bTimer);
+    if (win_game)
+    {
+        score += 5000;
+        if (sound)mciSendString(L"play .\\res\\snd\\tada.wav", NULL, NULL, NULL);
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkCyan));
+        if (bigText && TxtBrush)
+            Draw->DrawText(L"ПРЕВЪРТЯ ИГРАТА !", 18, bigText, D2D1::RectF(50.0f, cl_height / 2 - 50, cl_width, cl_height), TxtBrush);
+        Draw->EndDraw();
+        Sleep(3500);
+    }
 
+    wchar_t end_text[50] = L"О, О, О ! ЗАГУБИ !";
+    int size = 0;
 
+    switch (CheckRecord())
+    {
+    case no_record:
+        if (sound)PlaySound(L".\\res\\snd\\loose.wav", NULL, SND_ASYNC);
+        size = 19;
+        break;
 
+    case first_record:
+        wcscpy_s(end_text, L"ПЪРВИ РЕКОРД !");
+        if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_ASYNC);
+        size = 16;
+        break;
 
+    case record:
+        wcscpy_s(end_text, L"СВЕТОВЕН РЕКОРД !");
+        if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_ASYNC);
+        size = 18;
+        break;
+    }
+
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkCyan));
+    if (bigText && TxtBrush)
+        Draw->DrawText(end_text, size, bigText, D2D1::RectF(50.0f, cl_height / 2 - 50, cl_width, cl_height), TxtBrush);
+    Draw->EndDraw();
+    Sleep(7000);
 
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
@@ -1430,12 +1497,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     break;
                 }
             }
-            else
-            {
-                Draw->DrawBitmap(bmpKill, D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
-                if (Hero->Killed() == DL_FAIL)GameOver();
-            }
-
+            else Draw->DrawBitmap(bmpKill, D2D1::RectF(Hero->x, Hero->y, Hero->ex, Hero->ey));
+                
             ID2D1SolidColorBrush* LifeBrush = nullptr;
             if (Hero->lifes > 80)
                 Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Green), &LifeBrush);
@@ -1537,12 +1600,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
         ////////////////////////////////////////////////
         Draw->EndDraw();
-
-       
+        if (Hero)
+        {
+            if (Hero->killed)
+                if (Hero->Killed() == DL_FAIL)GameOver();
+        }
     }
 
     std::remove(tmp_file);
     ReleaseResources();
-    exit(1);
     return (int) bMsg.wParam;
 }
