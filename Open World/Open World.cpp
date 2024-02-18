@@ -577,11 +577,16 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 {
                     if (Grid[up_cell_col][up_cell_row].type != grids::end_tile)
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\cut.wav", NULL, NULL, NULL);
                         if (Hero->Attack() != 0)Grid[up_cell_col][up_cell_row].type = grids::empty;
                     }
                 }
 
-                if (Grid[up_cell_col][up_cell_row].type == grids::end_tile)NewLevel();
+                if (Grid[up_cell_col][up_cell_row].type == grids::end_tile)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\levelup.wav", NULL, NULL, NULL);
+                    NewLevel();
+                }
             }
             break;
 
@@ -606,10 +611,15 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 {
                     if (Grid[down_cell_col][down_cell_row].type != grids::end_tile)
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\cut.wav", NULL, NULL, NULL);
                         if (Hero->Attack() != 0)Grid[down_cell_col][down_cell_row].type = grids::empty;
                     }
                 }
-                if (Grid[down_cell_col][down_cell_row].type == grids::end_tile)NewLevel();
+                if (Grid[down_cell_col][down_cell_row].type == grids::end_tile)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\levelup.wav", NULL, NULL, NULL);
+                    NewLevel();
+                }
             }
             break;
 
@@ -633,10 +643,15 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 {
                     if (Grid[left_cell_col][left_cell_row].type != grids::end_tile)
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\cut.wav", NULL, NULL, NULL);
                         if (Hero->Attack() != 0)Grid[left_cell_col][left_cell_row].type = grids::empty;
                     }
                 }
-                if (Grid[left_cell_col][left_cell_row].type == grids::end_tile)NewLevel();
+                if (Grid[left_cell_col][left_cell_row].type == grids::end_tile)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\levelup.wav", NULL, NULL, NULL);
+                    NewLevel();
+                }
             }
             break;
 
@@ -660,15 +675,56 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                 {
                     if (Grid[right_cell_col][right_cell_row].type != grids::end_tile)
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\cut.wav", NULL, NULL, NULL);
                         if (Hero->Attack() != 0)Grid[right_cell_col][right_cell_row].type = grids::empty;
                     }
                 }
-                if (Grid[right_cell_col][right_cell_row].type == grids::end_tile)NewLevel();
+                if (Grid[right_cell_col][right_cell_row].type == grids::end_tile)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\levelup.wav", NULL, NULL, NULL);
+                    NewLevel();
+                }
             }
             break;
         }
-        
         break;
+
+        case WM_LBUTTONDOWN:
+            if (HIWORD(lParam) <= 50)
+            {
+                if (LOWORD(lParam) >= b1Rect.left && LOWORD(lParam) <= b1Rect.right)
+                {
+                    if (name_set)
+                    {
+                        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                        break;
+                    }
+
+                    if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                    if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &bDlgProc) == IDOK)name_set = true;
+                    break;
+                }
+
+                if (LOWORD(lParam) >= b1Rect.left && LOWORD(lParam) <= b1Rect.right)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                    if (sound)
+                    {
+                        sound = false;
+                        PlaySound(NULL, NULL, NULL);
+                        break;
+                    }
+                    else
+                    {
+                        sound = true;
+                        PlaySound(sound_file, NULL, SND_ASYNC | SND_LOOP);
+                        break;
+                    }
+                    break;
+                }
+
+            }
+            break;
 
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
     }
@@ -805,7 +861,7 @@ void SystemInit()
     }
 
     hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_OBLIQUE,
-        DWRITE_FONT_STRETCH_NORMAL, 48.0f, L"", &bigText);
+        DWRITE_FONT_STRETCH_NORMAL, 44.0f, L"", &bigText);
     if (hr != S_OK)
     {
         LogError(L"Error creating bigText ");
@@ -1186,6 +1242,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                 if (!(Hero->x >= (*bad)->ex || Hero->ex <= (*bad)->x || Hero->y >= (*bad)->ey || Hero->ey <= (*bad)->y))
                 {
+                    if (sound)mciSendString(L"play .\\res\\snd\\sword.wav", NULL, NULL, NULL);
                     (*bad)->dir = dirs::stop;
                     (*bad)->lifes -= Hero->Attack();
                     if (rand() % 100 == 66)Hero->lifes -= 50;
@@ -1194,9 +1251,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     {
                         score += 100;
                         (*bad)->killed = true;
+                        if (sound)mciSendString(L"play .\\res\\snd\\killed.wav", NULL, NULL, NULL);
                     }
                     if (Hero->lifes <= 0)
                     {
+                        if (sound)mciSendString(L"play .\\res\\snd\\hurt.wav", NULL, NULL, NULL);
                         Hero->killed = true;
                         break;
                     }
@@ -1234,6 +1293,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             if (!(Hero->x >= Potion->ex || Hero->ex <= Potion->x || Hero->y >= Potion->ey || Hero->ey <= Potion->y))
             {
+                if (sound)mciSendString(L"play .\\res\\snd\\lifes.wav", NULL, NULL, NULL);
                 if (Hero->lifes + 30 >= 120)Hero->lifes += 30;
                 else Hero->lifes = 120;
                 ReleaseCOM(&Potion);
@@ -1244,6 +1304,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             if (!(Hero->x >= Castle->ex || Hero->ex <= Castle->x || Hero->y >= Castle->ey || Hero->ey <= Castle->y))
             {
+                if (sound)mciSendString(L"play .\\res\\snd\\win.wav", NULL, NULL, NULL);
                 win_game = true;
                 GameOver();
             }
@@ -1435,7 +1496,44 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+        ////////////////////////////////////
 
+        // TEXT DRAW ***********************
+
+        wchar_t info[100] = L"\0";
+        wchar_t add[5] = L"\0";
+        int size = 0;
+
+        wcscpy_s(info, current_player);
+
+        wcscat_s(info, L", резултат: ");
+        swprintf(add, 5, L"%d", score);
+        wcscat_s(info, add);
+
+        for (int i = 0; i < 100; ++i)
+        {
+            if (info[i] != '\0')size++;
+            else break;
+        }
+
+        if (bigText && TxtBrush)
+            Draw->DrawText(info, size, bigText, D2D1::RectF(5.0f, cl_height - 120.0f, cl_width, cl_height), TxtBrush);
+
+        size = 0;
+        swprintf(add, 2, L"%d", minutes);
+        wcscpy_s(info, add);
+        wcscat_s(info, L" : ");
+        swprintf(add, 3, L"%d", seconds - minutes * 60);
+        if (seconds - minutes * 60 < 10)wcscat_s(info, L"0");
+        wcscat_s(info, add);
+        for (int i = 0; i < 100; ++i)
+        {
+            if (info[i] != '\0')size++;
+            else break;
+        }
+
+        if (bigText && TxtBrush)
+            Draw->DrawText(info, size, bigText, D2D1::RectF(cl_width / 2 - 50, cl_height - 50.0f, cl_width, cl_height), TxtBrush);
 
         ////////////////////////////////////////////////
         Draw->EndDraw();
