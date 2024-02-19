@@ -608,6 +608,72 @@ void LoadGame()
     if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
     MessageBox(bHwnd, L"Играта е заредена !", L"Зареждане !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
 }
+void ShowHelp()
+{
+    int result = 0;
+    CheckFile(help_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONASTERISK);
+        MessageBox(bHwnd, L"Липсва помощ за играта !\n\nСвържете се с разработчика !", L"Липсва файл !",
+            MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        pause = false;
+        show_help = false;
+        return;
+    }
+
+    wchar_t help[1000] = L"\0";
+    std::wifstream hlp(help_file);
+    hlp >> result;
+    for (int i = 0; i < result; ++i)
+    {
+        int letter = 0;
+        hlp >> letter;
+        help[i] = static_cast<wchar_t>(letter);
+    }
+    hlp.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkSlateGray));
+    if (FieldBrush)
+        Draw->FillRectangle(D2D1::RectF(0, 0, cl_width, 50.0f), ButBckgBrush);
+    if (nrmText && TxtBrush && ButHgltBrush && ButInactBrush)
+    {
+        if (name_set)
+            Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                ButInactBrush);
+        else
+        {
+            if (b1Hglt)
+                Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                    ButHgltBrush);
+            else
+                Draw->DrawText(L"ИМЕ НА ИГРАЧ", 13, nrmText, D2D1::RectF(b1Rect.left + 5.0f, 0, b1Rect.right, 50.0f),
+                    TxtBrush);
+        }
+
+        if (b2Hglt)
+            Draw->DrawText(L"ЗВУЦИ ON / OFF", 15, nrmText, D2D1::RectF(b2Rect.left + 5.0f, 0, b2Rect.right, 50.0f),
+                ButHgltBrush);
+        else
+            Draw->DrawText(L"ЗВУЦИ ON / OFF", 15, nrmText, D2D1::RectF(b2Rect.left + 5.0f, 0, b2Rect.right, 50.0f),
+                TxtBrush);
+
+        if (b3Hglt)
+            Draw->DrawText(L"ПОМОЩ", 6, nrmText, D2D1::RectF(b3Rect.left + 10.0f, 0, b3Rect.right, 50.0f),
+                ButHgltBrush);
+        else
+            Draw->DrawText(L"ПОМОЩ", 6, nrmText, D2D1::RectF(b3Rect.left + 10.0f, 0, b3Rect.right, 50.0f),
+                TxtBrush);
+    }
+    if (nrmText && TxtBrush && ButHgltBrush)
+        Draw->DrawTextW(help, result, nrmText, D2D1::RectF(50.0f, 100.0f, cl_width, cl_width), ButHgltBrush);
+    Draw->EndDraw();
+
+
+}
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1014,6 +1080,25 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
                     break;
                 }
 
+                if (LOWORD(lParam) >= b3Rect.left && LOWORD(lParam) <= b3Rect.right)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                    if (!show_help)
+                    {
+                        show_help = true;
+                        pause = true;
+                        ShowHelp();
+                        break;
+                    }
+                    else
+                    {
+                        show_help = false;
+                        pause = false;
+                        break;
+                    }
+                    break;
+                }
+
             }
             break;
 
@@ -1143,8 +1228,8 @@ void SystemInit()
         ErrExit(eD2D);
     }
 
-    hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_OBLIQUE,
-        DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
+    hr = iWriteFactory->CreateTextFormat(L"GABRIOLA", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_OBLIQUE,
+        DWRITE_FONT_STRETCH_NORMAL, 17.0f, L"", &nrmText);
     if (hr != S_OK)
     {
         LogError(L"Error creating nrmText ");
@@ -1332,7 +1417,7 @@ void SystemInit()
         if (TxtBrush && bigText)
             Draw->DrawText(show, i, bigText, D2D1::RectF(30.0f, cl_height / 2 - 50.0f, cl_width, cl_height), TxtBrush);
         Draw->EndDraw();
-        Sleep(20);
+        Sleep(10);
     }
     Sleep(2500);
 }
@@ -1342,6 +1427,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     bIns = hInstance;
 
     SystemInit();
+
+    PlaySound(sound_file, NULL, SND_ASYNC | SND_LOOP);
     
     while (bMsg.message != WM_QUIT)
     {
@@ -1731,8 +1818,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             else
                 Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Red), &LifeBrush);
 
-            Draw->DrawLine(D2D1::Point2F(Hero->x, Hero->y - 5.0f), D2D1::Point2F(Hero->x + Hero->lifes / 4, Hero->y - 5.0f), 
-                LifeBrush, 5.0f);
+            Draw->DrawLine(D2D1::Point2F(Hero->x, Hero->y - 5.0f), D2D1::Point2F(Hero->x + (float)(Hero->lifes / 4), 
+                Hero->y - 5.0f), LifeBrush, 5.0f);
             ReleaseCOM(&LifeBrush);
         }
         if (Potion)
