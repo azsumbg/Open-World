@@ -145,6 +145,7 @@ void InitGame()
     score = 0;
     minutes = 0;
     seconds = 120;
+    name_set = false;
 
     ReleaseCOM(&Hero);
     ReleaseCOM(&Potion);
@@ -259,7 +260,6 @@ void NewLevel()
         for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
     vBadArmy.clear();
 
-    
     InitGrid(1.0f, 51.0f, Grid);
 
     for (int j = 0; j < 10; j++)
@@ -331,7 +331,7 @@ BOOL CheckRecord()
     {
         std::wofstream rec(record_file);
         rec << score << std::endl;
-        for (int i = 0; i < 16; i++)rec << current_player[i] << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
         rec.close();
         return first_record;
     }
@@ -344,7 +344,7 @@ BOOL CheckRecord()
     {
         std::wofstream rec(record_file);
         rec << score << std::endl;
-        for (int i = 0; i < 16; i++)rec << current_player[i] << std::endl;
+        for (int i = 0; i < 16; i++)rec << static_cast<int>(current_player[i]) << std::endl;
         rec.close();
         return record;
     }
@@ -380,7 +380,7 @@ void GameOver()
     case first_record:
         wcscpy_s(end_text, L"ПЪРВИ РЕКОРД !");
         if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_ASYNC);
-        size = 16;
+        size = 15;
         break;
 
     case record:
@@ -399,6 +399,214 @@ void GameOver()
 
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
+}
+void HallofFame()
+{
+    int result = 0;
+    CheckFile(record_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONASTERISK);
+        MessageBox(bHwnd, L"Все още няма рекорд на играта !\n\nПостарай се повече !", L"Липсва файл !",
+            MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    wchar_t hof[75] = L"НАЙ-ДОБЪР ИГРАЧ: ";
+    wchar_t saved_pl[16] = L"\0";
+    wchar_t add[5] = L"\0";
+
+    std::wifstream rec(record_file);
+    rec >> result;
+    swprintf(add, 5, L"%d", result);
+    for (int i = 0; i < 16; ++i)
+    {
+        int letter = 0;
+        rec >> letter;
+        saved_pl[i] = static_cast<wchar_t>(letter);
+    }
+    rec.close();
+
+    wcscat_s(hof, saved_pl);
+    wcscat_s(hof, L"\nСВЕТОВЕН РЕКОРД: ");
+    wcscat_s(hof, add);
+
+    result = 0;
+
+    for (int i = 0; i < 75; i++)
+    {
+        if (hof[i] != '\0')result++;
+        else break;
+    }
+
+    if (sound)mciSendString(L"play .\\res\\snd\\tada.wav", NULL, NULL, NULL);
+
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkSlateGray));
+    if (bigText && TxtBrush)
+        Draw->DrawTextW(hof, result, bigText, D2D1::RectF(10.0f, 200.0f, cl_width, cl_width), ButHgltBrush);
+    Draw->EndDraw();
+    Sleep(4000);
+
+}
+void SaveGame()
+{
+    int result = 0;
+    CheckFile(save_file, &result);
+    if (result == FILE_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        if (MessageBox(bHwnd, L"Ако продължиш, ще загубиш предишен запис !\n\nНаистина ли презаписваш ?",
+            L"Презапис", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)return;
+    }
+
+    std::wofstream save(save_file);
+
+    save << score << std::endl;
+    save << seconds << std::endl;
+    for (int i = 0; i < 16; ++i)save << static_cast<int>(current_player[i]) << std::endl;
+    save << name_set << std::endl;
+    for (int rows = 0; rows < 10; rows++)
+        for (int cols = 0; cols < 10; cols++)
+            save << static_cast<int>(Grid[cols][rows].type) << std::endl;
+    if (!Potion)save << 0 << std::endl;
+    else
+    {
+        save << Potion->x << std::endl;
+        save << Potion->y << std::endl;
+    }
+    if (!Castle)save << 0 << std::endl;
+    else
+    {
+        save << Castle->x << std::endl;
+        save << Castle->y << std::endl;
+    }
+    if (!Hero)save << 0 << std::endl;
+    else
+    {
+        save << Hero->x << std::endl;
+        save << Hero->y << std::endl;
+        save << Hero->lifes << std::endl;
+    }
+
+    save << vBadArmy.size() << std::endl;
+    if (!vBadArmy.empty())
+    {
+        for (int i = 0; i < vBadArmy.size(); ++i)
+        {
+            save << vBadArmy[i]->x << std::endl;
+            save << vBadArmy[i]->y << std::endl;
+            save << static_cast<int>(vBadArmy[i]->GetType()) << std::endl;
+            save << static_cast<int>(vBadArmy[i]->dir) << std::endl;
+            save << vBadArmy[i]->lifes << std::endl;
+        }
+    }
+
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е запазена !", L"Запис !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+}
+void LoadGame()
+{
+    int result = 0;
+    float tempx = 0;
+    float tempy = 0;
+
+    CheckFile(save_file, &result);
+    if (result == FILE_EXIST)
+    {
+        if (sound)MessageBeep(MB_ICONEXCLAMATION);
+        if (MessageBox(bHwnd, L"Ако продължиш, ще загубиш тази игра !\n\nНаистина ли презаписваш ?",
+            L"Презапис", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)return;
+    }
+    else
+    {
+        if (sound)MessageBeep(MB_ICONASTERISK);
+        MessageBox(bHwnd, L"Все още няма записана игра !\n\nПостарай се повече !", L"Липсва файл !",
+            MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    ReleaseCOM(&Hero);
+    ReleaseCOM(&Potion);
+    ReleaseCOM(&Castle);
+
+    if (!vBadArmy.empty())
+        for (int i = 0; i < vBadArmy.size(); i++)ReleaseCOM(&vBadArmy[i]);
+    vBadArmy.clear();
+
+    std::wifstream save(save_file);
+
+    save >> score;
+    save >> seconds;
+    wcscpy_s(current_player, L"\0");
+    for (int i = 0; i < 16; ++i)
+    {
+        int letter = 0;
+        save >> letter;
+        current_player[i] = static_cast<wchar_t>(letter);
+    }
+    save >> name_set;
+    
+    for (int rows = 0; rows < 10; ++rows)
+        for (int cols = 0; cols < 10; cols++)
+        {
+            int mtype = 0;
+            save >> mtype;
+            Grid[cols][rows].type = static_cast<grids>(mtype);
+        }
+    
+    save >> tempx;
+    if (tempx != 0)
+    {
+        save >> tempy;
+        Potion = new PROTON(tempx, tempy, 20.0f, 17.0f);
+    }
+
+    save >> tempx;
+    if (tempx != 0)
+    {
+        save >> tempy;
+        Castle = new PROTON(tempx, tempy, 20.0f, 17.0f);
+    }
+    
+    save >> tempx;
+    if (tempx == 0)GameOver();
+    else
+    {
+        save >> tempy;
+        save >> result;
+        Hero = CreatureFactory(creatures::hero, tempx, tempy);
+        Hero->lifes = result;
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; ++i)
+        {
+            int mtype = 0;
+            int mdir = 0;
+            int mlifes = 0;
+
+            save >> tempx;
+            save >> tempy;
+            save >> mtype;
+            save >> mdir;
+            save >> mlifes;
+
+            vBadArmy.push_back(CreatureFactory(static_cast<creatures>(mtype), tempx, tempy));
+
+            vBadArmy[i]->dir = static_cast<dirs>(mdir);
+            vBadArmy[i]->lifes = mlifes;
+        }
+    }
+
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е заредена !", L"Зареждане !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
 }
 
 INT_PTR CALLBACK bDlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -612,7 +820,23 @@ LRESULT CALLBACK bWinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPa
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
             break;
 
+        case mSave:
+            pause = true;
+            SaveGame();
+            pause = false;
+            break;
 
+        case mLoad:
+            pause = true;
+            LoadGame();
+            pause = false;
+            break;
+
+        case mHoF:
+            pause = true;
+            HallofFame();
+            pause = false;
+            break;
         }
         break;
 
